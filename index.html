@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#18352d">
+<meta name="description" content="Offline groundworks material calculator for volume, tonnes and ordering estimates.">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Groundworks Calculator</title>
+<style>
+:root{color-scheme:light;--green:#18352d;--green2:#285547;--bg:#f3f5f3;--card:#fff;--text:#17231e;--muted:#65736c;--line:#dce4df;--accent:#e3f0e8;--danger:#a52a2a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
+header{background:var(--green);color:#fff;padding:20px 16px 16px;position:sticky;top:0;z-index:3;box-shadow:0 2px 8px #0002}
+.headerrow{display:flex;align-items:center;gap:12px}.logo{width:44px;height:44px;flex:none}h1{font-size:1.25rem;margin:0}header p{margin:4px 0 0;color:#d5e5dc;font-size:.88rem}
+main{max-width:720px;margin:0 auto;padding:14px}nav{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+nav button{padding:11px 5px;font-size:.88rem}
+button,.button{border:0;border-radius:12px;background:var(--green2);color:white;padding:13px 14px;font:inherit;font-weight:650;cursor:pointer;min-height:46px}
+button.secondary{background:#e7ece8;color:var(--text);border:1px solid var(--line)}button.active{background:var(--green);outline:2px solid #94b7a3}
+button.danger{background:#f8e7e7;color:var(--danger)}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #e3ae45;outline-offset:2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 1px 2px #00000008}
+h2{font-size:1.08rem;margin:0 0 13px}h3{font-size:1rem;margin:0 0 8px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{display:flex;flex-direction:column;gap:6px;min-width:0}.field.full{grid-column:1/-1}
+label{font-size:.88rem;color:var(--muted);font-weight:650}
+input,select{width:100%;min-height:47px;border:1px solid #bfcac3;border-radius:10px;background:#fff;padding:10px 12px;font:inherit;color:var(--text)}
+small,.muted{color:var(--muted);font-size:.84rem}.results{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:var(--accent);border-radius:12px;padding:13px}.metric span{display:block;font-size:.82rem;color:#466256}.metric strong{font-size:1.35rem;display:block;margin-top:4px;overflow-wrap:anywhere}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.actions button{flex:1}
+.notice{padding:11px 12px;border-radius:10px;background:#fff5d8;color:#634d13;font-size:.86rem;margin-top:10px}
+.status{font-size:.82rem;display:inline-flex;align-items:center;gap:6px;color:#d5e5dc}.dot{width:8px;height:8px;border-radius:50%;background:#70d69d;display:inline-block}
+.hidden{display:none!important}.item{padding:12px 0;border-bottom:1px solid var(--line)}.item:last-child{border-bottom:0}.itemrow{display:flex;align-items:center;justify-content:space-between;gap:10px}.item strong{display:block}.item .sub{font-size:.83rem;color:var(--muted);margin-top:3px}.item button{min-height:38px;padding:8px 11px}
+footer{text-align:center;color:var(--muted);font-size:.78rem;padding:8px 18px 24px}
+@media(max-width:390px){.grid,.results{grid-template-columns:1fr 1fr}.metric strong{font-size:1.2rem}nav button{font-size:.78rem}}
+</style>
+</head>
+<body>
+<header>
+ <div class="headerrow">
+  <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><path fill="#e9c46a" d="M8 10h48v9H8zM8 27h48v9H8zM8 44h48v9H8z"/><path fill="#fff" d="M13 5h7v54h-7zM44 5h7v54h-7z"/></svg>
+  <div style="flex:1"><h1>Groundworks Calculator</h1><p>Materials · Volume · Tonnes · Site history</p></div>
+ </div>
+ <div class="status" style="margin-top:10px"><span class="dot"></span><span id="connection">Ready for offline use after first load</span></div>
+</header>
+<main>
+<nav aria-label="Calculator sections">
+ <button id="tab-calc" class="active" onclick="showTab('calc')">Calculator</button>
+ <button id="tab-materials" class="secondary" onclick="showTab('materials')">Materials</button>
+ <button id="tab-history" class="secondary" onclick="showTab('history')">History</button>
+</nav>
+
+<section id="view-calc">
+ <div class="card">
+  <h2>Calculation type</h2>
+  <div class="field"><label for="calcType">Choose calculation</label>
+   <select id="calcType" onchange="updateCalcType()">
+    <option value="volume">Volume &amp; tonnes</option><option value="concrete">Concrete / pads / slabs</option><option value="earthworks">Excavation / earthworks</option>
+   </select>
+  </div>
+  <div class="grid" style="margin-top:12px">
+   <div class="field full"><label for="job">Job / site name (optional)</label><input id="job" placeholder="e.g. Trinity Manor" autocomplete="off"></div>
+   <div class="field full"><label for="material">Material</label><select id="material" onchange="syncDensity()"></select></div>
+   <div class="field"><label for="length">Length (m)</label><input id="length" type="text" inputmode="decimal" value="1" placeholder="e.g. 2.50"></div>
+   <div class="field"><label for="width">Width (m)</label><input id="width" type="text" inputmode="decimal" value="1" placeholder="e.g. 1.20"></div>
+   <div class="field"><label for="depth">Depth / thickness (m)</label><input id="depth" type="text" inputmode="decimal" value="0.15" placeholder="e.g. 0.15"></div>
+   <div class="field"><label for="quantity">Number of areas</label><input id="quantity" type="text" inputmode="decimal" value="4" placeholder="e.g. 4"></div>
+   <div class="field"><label for="density">Density (t/m³)</label><input id="density" type="text" inputmode="decimal" value="1.6" placeholder="e.g. 1.60"></div>
+   <div class="field"><label for="waste">Extra allowance (%)</label><input id="waste" type="text" inputmode="decimal" value="10" placeholder="e.g. 10"></div>
+  </div>
+  <div class="actions"><button onclick="calculate()">Calculate</button><button class="secondary" onclick="resetCalc()">Reset</button></div>
+  <div id="calcError" class="notice hidden" role="alert"></div>
+ </div>
+ <div id="resultCard" class="card">
+  <h2>Results</h2>
+  <div class="results">
+   <div class="metric"><span>Total volume</span><strong id="volumeOut">0.60 m³</strong></div>
+   <div class="metric"><span>Estimated weight</span><strong id="tonnesOut">0.96 t</strong></div>
+   <div class="metric"><span>With allowance</span><strong id="allowanceOut">1.06 t</strong></div>
+   <div class="metric"><span>Suggested order</span><strong id="orderOut">1.1 t</strong></div>
+  </div>
+  <p class="muted" id="resultNote">Based on the selected density. Supplier values may vary.</p>
+  <div class="actions"><button onclick="saveCalculation()">Save to history</button><button class="secondary" onclick="copyResult()">Copy results</button></div>
+ </div>
+ <div class="notice">Important: density values are estimates. Confirm the correct material factor with your supplier. Excavated soil can bulk up after digging, so loose-load quantities may differ from in-situ volume.</div>
+</section>
+
+<section id="view-materials" class="hidden">
+ <div class="card">
+  <h2>Material catalogue</h2>
+  <p class="muted">Edit a density or add your own material. Values are saved on this device.</p>
+  <div id="materialList"></div>
+ </div>
+ <div class="card">
+  <h2>Add material</h2>
+  <div class="grid">
+   <div class="field"><label for="newName">Material name</label><input id="newName" placeholder="e.g. 10mm Chippings"></div>
+   <div class="field"><label for="newDensity">Density (t/m³)</label><input id="newDensity" inputmode="decimal" placeholder="e.g. 1.60"></div>
+  </div>
+  <div class="actions"><button onclick="addMaterial()">Add material</button><button class="secondary" onclick="exportData()">Export backup</button></div>
+  <p class="muted">Export backup downloads a JSON file of your catalogue and history. Keep it somewhere safe.</p>
+  <input id="importFile" type="file" accept="application/json,.json" onchange="importData(event)" class="hidden">
+  <button class="secondary" style="width:100%;margin-top:8px" onclick="document.getElementById('importFile').click()">Import backup</button>
+ </div>
+</section>
+
+<section id="view-history" class="hidden">
+ <div class="card">
+  <div class="itemrow"><h2 style="margin:0">Saved calculations</h2><button class="secondary" onclick="exportData()">Export backup</button></div>
+  <p class="muted">History is stored locally in this browser on this device.</p>
+  <div id="historyList"></div>
+  <div class="actions"><button class="danger" onclick="clearHistory()">Clear history</button></div>
+ </div>
+</section>
+</main>
+<footer>Groundworks Calculator · Offline-first prototype · Check supplier densities before ordering.</footer>
+
+<script>
+const DEFAULT_MATERIALS = [
+ {name:"General Soil",density:1.60},{name:"Clay",density:1.80},{name:"Dry Sand",density:1.60},
+ {name:"Type 1",density:2.00},{name:"Dry Blinding",density:1.60},{name:"Chippings",density:1.60},
+ {name:"Shingle",density:1.60},{name:"Granite Dust",density:1.70},{name:"Fresh Concrete",density:2.40}
+];
+let materials = load("gw_materials", DEFAULT_MATERIALS);
+let history = load("gw_history", []);
+let lastResult = null;
+function load(key,fallback){try{const v=localStorage.getItem(key);return v?JSON.parse(v):structuredClone(fallback)}catch(e){return JSON.parse(JSON.stringify(fallback))}}
+function persist(){localStorage.setItem("gw_materials",JSON.stringify(materials));localStorage.setItem("gw_history",JSON.stringify(history))}
+function n(id){const raw=document.getElementById(id).value.trim().replace(",",".");if(raw==="")return NaN;return Number(raw)}
+function fmt(v,d=2){return Number(v).toLocaleString("en-GB",{minimumFractionDigits:d,maximumFractionDigits:d})}
+function safe(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function populateMaterials(selected){const sel=document.getElementById("material");sel.innerHTML="";materials.forEach(m=>{const o=document.createElement("option");o.value=m.name;o.textContent=m.name;sel.appendChild(o)});if(selected&&materials.some(m=>m.name===selected))sel.value=selected;else if(materials.length)sel.selectedIndex=0;syncDensity();renderMaterials()}
+function syncDensity(){const m=materials.find(x=>x.name===document.getElementById("material").value);if(m)document.getElementById("density").value=String(m.density)}
+function showTab(tab){["calc","materials","history"].forEach(t=>{document.getElementById("view-"+t).classList.toggle("hidden",t!==tab);const b=document.getElementById("tab-"+t);b.classList.toggle("active",t===tab);b.classList.toggle("secondary",t!==tab)});if(tab==="materials")renderMaterials();if(tab==="history")renderHistory()}
+function updateCalcType(){const t=document.getElementById("calcType").value;const note=document.getElementById("resultNote");note.textContent=t==="earthworks"?"Earthworks estimate: actual loose volume can be higher than the in-situ excavation volume.":t==="concrete"?"Concrete volume is calculated from the dimensions entered. Allow for supplier minimum loads and site conditions.":"Based on the selected density. Supplier values may vary."}
+function calculate(){
+ const L=n("length"),W=n("width"),D=n("depth"),Q=n("quantity"),DEN=n("density"),WASTE=n("waste");
+ const err=document.getElementById("calcError");err.classList.add("hidden");
+ if(![L,W,D,Q,DEN,WASTE].every(Number.isFinite)||L<=0||W<=0||D<=0||Q<=0||DEN<=0||WASTE<0){err.textContent="Please enter positive dimensions, quantity and density, and a zero or positive allowance. Decimal points and commas are accepted.";err.classList.remove("hidden");return}
+ const volume=L*W*D*Q,tonnes=volume*DEN,withAllowance=tonnes*(1+WASTE/100),order=Math.ceil(withAllowance*10)/10;
+ lastResult={type:document.getElementById("calcType").value,job:document.getElementById("job").value.trim(),material:document.getElementById("material").value,length:L,width:W,depth:D,quantity:Q,density:DEN,waste:WASTE,volume,tonnes,withAllowance,order,date:new Date().toISOString()};
+ document.getElementById("volumeOut").textContent=fmt(volume)+" m³";
+ document.getElementById("tonnesOut").textContent=fmt(tonnes)+" t";
+ document.getElementById("allowanceOut").textContent=fmt(withAllowance)+" t";
+ document.getElementById("orderOut").textContent=fmt(order,1)+" t";
+ updateCalcType();
+}
+function saveCalculation(){if(!lastResult)calculate();if(!lastResult)return;history.unshift({...lastResult});history=history.slice(0,200);persist();renderHistory();const b=document.querySelector('#resultCard .actions button');const old=b.textContent;b.textContent="Saved ✓";setTimeout(()=>b.textContent=old,1300)}
+function copyResult(){if(!lastResult)calculate();if(!lastResult)return;const r=lastResult;const text=`Groundworks Calculator\nJob: ${r.job||"Not specified"}\nMaterial: ${r.material}\nDimensions: ${r.length}m × ${r.width}m × ${r.depth}m × ${r.quantity}\nVolume: ${fmt(r.volume)} m³\nEstimated weight: ${fmt(r.tonnes)} tonnes\nWith ${fmt(r.waste,0)}% allowance: ${fmt(r.withAllowance)} tonnes\nSuggested order: ${fmt(r.order,1)} tonnes\nDensity used: ${fmt(r.density,2)} t/m³`;if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(()=>alert("Results copied. You can paste them into WhatsApp or Notes.")).catch(()=>fallbackCopy(text))}else fallbackCopy(text)}
+function fallbackCopy(text){const ta=document.createElement("textarea");ta.value=text;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");alert("Results copied.")}catch(e){alert(text)}ta.remove()}
+function resetCalc(){["length","width","depth","quantity","density","waste"].forEach((id,i)=>document.getElementById(id).value=["1","1","0.15","4","1.6","10"][i]);document.getElementById("job").value="";document.getElementById("calcType").value="volume";document.getElementById("material").value="Dry Blinding";syncDensity();calculate()}
+function renderMaterials(){const el=document.getElementById("materialList");if(!el)return;el.innerHTML="";materials.forEach((m,i)=>{const div=document.createElement("div");div.className="item";div.innerHTML=`<div class="itemrow"><div style="flex:1;min-width:0"><strong>${safe(m.name)}</strong><div class="sub">Density in tonnes per m³</div></div><div style="width:112px"><input aria-label="Density for ${safe(m.name)}" type="text" inputmode="decimal" value="${safe(m.density)}" id="density-${i}"></div><button class="secondary" aria-label="Save ${safe(m.name)}" onclick="editMaterial(${i})">Save</button></div>`;el.appendChild(div)})}
+function editMaterial(i){const value=Number(document.getElementById("density-"+i).value.trim().replace(",","."));if(!Number.isFinite(value)||value<=0){alert("Density must be a number greater than zero.");return}materials[i].density=value;persist();populateMaterials(materials[i].name);alert("Density saved on this device.")}
+function addMaterial(){const name=document.getElementById("newName").value.trim(),density=Number(document.getElementById("newDensity").value.trim().replace(",","."));if(!name||!Number.isFinite(density)||density<=0){alert("Enter a material name and a density greater than zero.");return}if(materials.some(m=>m.name.toLowerCase()===name.toLowerCase())){alert("A material with this name already exists.");return}materials.push({name,density});persist();document.getElementById("newName").value="";document.getElementById("newDensity").value="";populateMaterials(name);alert("Material added.")}
+function renderHistory(){const el=document.getElementById("historyList");if(!el)return;el.innerHTML="";if(!history.length){el.innerHTML='<p class="muted">No saved calculations yet. Calculate a job and tap “Save to history”.</p>';return}history.forEach((r,i)=>{const div=document.createElement("div");div.className="item";const date=new Date(r.date).toLocaleString();div.innerHTML=`<div class="itemrow"><div style="flex:1;min-width:0"><strong>${safe(r.job||r.material)}</strong><div class="sub">${safe(r.material)} · ${fmt(r.volume)} m³ · ${fmt(r.order,1)} tonnes · ${safe(date)}</div></div><button class="secondary" onclick="loadHistory(${i})">Load</button></div>`;el.appendChild(div)})}
+function loadHistory(i){const r=history[i];showTab("calc");document.getElementById("job").value=r.job||"";document.getElementById("calcType").value=r.type||"volume";document.getElementById("length").value=r.length;document.getElementById("width").value=r.width;document.getElementById("depth").value=r.depth;document.getElementById("quantity").value=r.quantity;document.getElementById("density").value=r.density;document.getElementById("waste").value=r.waste;document.getElementById("material").value=r.material;calculate()}
+function clearHistory(){if(!history.length)return;if(confirm("Delete all saved calculations from this device?")){history=[];persist();renderHistory()}}
+function exportData(){const blob=new Blob([JSON.stringify({materials,history,exportedAt:new Date().toISOString()},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="groundworks-calculator-backup.json";a.click();URL.revokeObjectURL(a.href)}
+function importData(event){const file=event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const data=JSON.parse(reader.result);if(!Array.isArray(data.materials)||!Array.isArray(data.history))throw new Error();if(!confirm("Import backup and replace the current catalogue and history?"))return;materials=data.materials;history=data.history;persist();populateMaterials();renderHistory();alert("Backup imported.")}catch(e){alert("This file does not look like a valid Groundworks Calculator backup.")}};reader.readAsText(file);event.target.value=""}
+populateMaterials("Dry Blinding");calculate();
+if("serviceWorker" in navigator && location.protocol.startsWith("http")){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}))}
+function onlineStatus(){document.getElementById("connection").textContent=navigator.onLine?"Online · offline cache ready after first visit":"Offline mode · saved data available";}window.addEventListener("online",onlineStatus);window.addEventListener("offline",onlineStatus);onlineStatus();
+</script>
+</body>
+</html>
